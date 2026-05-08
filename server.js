@@ -174,3 +174,25 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`💻 DESARROLLO: Visual Studio Code`);
     console.log("==================================================\n");
 });
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`Snapsphere encendido en el puerto ${PORT}`);
+});
+
+// --- CONFIGURACIÓN PARA RENDER ---
+
+// 1. Sirve los archivos de la carpeta 'public' (CSS, imágenes, etc.)
+app.use(express.static('public'));
+
+// 2. Ruta principal: Carga tu página Snapsphere
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
+// 3. El puerto dinámico (lo que vimos en azul)
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Snapsphere encendido en el puerto ${PORT}`);
+});
