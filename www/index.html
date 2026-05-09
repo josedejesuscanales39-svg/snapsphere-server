@@ -367,11 +367,20 @@ function navegarA(seccion) {
 
     </div>
 
-    <script>
-        const API_URL = "http://localhost:3000";
+    <script> 
+         // 1. EL LOCALIZADOR (Primero identificamos a dónde ir)
+         // Nota: Cuando estés en el celular, cambia 'localhost' por tu IP (ej. 192.168.1.XX)
+         const API_URL = window.location.hostname === 'localhost' 
+         ? 'http://localhost:3000' 
+         : `http://${window.location.hostname}:3000`;
 
-        // --- LÓGICA DE ARCHIVOS (REAL) ---
-        function abrirGaleriaReal() {
+         // 2. ESPACIO DE SEGURIDAD (Para que el código respire)
+
+          // 3. AHORA SÍ, LAS FUNCIONES (A buscar y conectar)
+         console.log("Conectando al localizador: " + API_URL);
+
+         // --- LÓGICA DE ARCHIVOS (REAL) ---
+         function abrirGaleriaReal() {
             // Activa el input oculto para pedir permisos reales al sistema
             document.getElementById('file-input').click();
         }

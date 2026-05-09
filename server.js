@@ -1,3 +1,17 @@
+// ==========================================
+// SNAPSPHERE - NÚCLEO DE ENLACE OPTIMIZADO
+// ==========================================
+const express = require('express');
+const cors = require('cors'); // La llave maestra para el celular
+const os = require('os');     // El radar para encontrar tu IP
+
+const app = express();
+
+// --- OPTIMIZACIÓN DE PERMISOS ---
+app.use(cors()); // Abre la puerta a conexiones externas (celular)
+app.use(express.json({ limit: '50mb' })); // Optimizado para recibir videos pesados
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
 const { MongoClient } = require('mongodb');
 
 // Esta es tu dirección secreta que copiaste de Atlas
