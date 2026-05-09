@@ -1,3 +1,19 @@
+const { MongoClient } = require('mongodb');
+
+// Esta es tu dirección secreta que copiaste de Atlas
+const uri = "mongodb+srv://josedejesuscanales39_db_user:q3xz2aVro8zjn4Ih@cluster0.1rgsxra.mongodb.net/?retryWrites=true&w=majority";
+async function conectarBase() {
+    try {
+        await client.connect();
+        console.log("¡Conexión exitosa! Snapsphere ya guarda datos.");
+    } catch (e) {
+        console.error("Error de conexión:", e);
+    }
+}
+
+conectarBase();
+
+const fs = require('fs');
 const express = require('express');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
@@ -35,132 +51,169 @@ const pendingVerifications = {};
 const systemNotifications = []; 
 const chatMessages = []; 
 
-// --- [ACTUALIZACIÓN] BUSCADOR DE PERSONAS REAL ---
-app.get('/search/:username', (req, res) => {
-    const query = req.params.username.toLowerCase();
-    const userFound = Object.values(registeredUsers).find(u => 
-        u.nombre.toLowerCase() === query || u.gmail.split('@')[0] === query
-    );
-
-    if (userFound) {
-        console.log(`🔍 [BUSCADOR] Se encontró a: ${query}`);
-        res.status(200).json({
-            found: true,
-            nombre: userFound.nombre,
-            apellidos: userFound.apellidos,
-            seguidores: userFound.seguidores,
-            status: 'online'
-        });
-    } else {
-        console.log(`🔍 [BUSCADOR] No se encontró a: ${query}`);
-        res.status(404).json({ found: false, message: 'Persona no encontrada' });
-    }
-});
-
 // --- 1. FUNCIÓN DE REGISTRO CON LOGS AVANZADOS ---
 app.post('/register', (req, res) => {
-    const { nombre, apellidos, gmail, password, fecha, seguidores } = req.body;
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const { nombre, apellidos, gmail, password } = req.body;
+    
+    // Generar código de 6 dígitos para la terminal
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     
     pendingVerifications[gmail] = { 
         code, 
         userData: { 
-            nombre, apellidos, gmail, password, 
-            fechaNac: fecha, 
-            seguidores: seguidores || 0,
+            nombre, 
+            apellidos, 
+            gmail, 
+            password, 
             status: 'pending',
-            ip: clientIp,
             date: new Date().toLocaleString() 
         } 
     };
 
+    // LOG DETALLADO EN VS CODE
     console.log(`\n📥 [SOLICITUD DE REGISTRO RECIBIDA]`);
     console.log(`👤 Usuario: ${nombre} ${apellidos}`);
-    console.log(`📧 Destino: ${gmail}`);
-    console.log(`🎂 Fecha Nac: ${fecha}`);
-    console.log(`🌐 IP Detectada: ${clientIp}`);
-    console.log(`🔑 CÓDIGO: ${code}`);
+    console.log(`📧 Correo de destino: ${gmail}`);
+    console.log(`🔑 CÓDIGO DE SEGURIDAD: ${code}`);
+    console.log(`📅 Fecha/Hora: ${new Date().toLocaleString()}`);
     console.log(`-------------------------------------------`);
 
     const mailOptions = {
         from: '"Snapsphere Security" <soportesnapsphere@gmail.com>',
         to: gmail,
-        subject: `Tu código de acceso: ${code}`,
+        subject: `Tu código de acceso Snapsphere: ${code}`,
         html: `
             <div style="background-color: #000; color: #fff; padding: 30px; font-family: sans-serif; border: 2px solid #0095f6; border-radius: 15px;">
                 <h1 style="color: #0095f6; text-align: center;">SNAPSPHERE 3.0</h1>
-                <p>Tu código es: <b style="font-size: 30px; color: #0095f6;">${code}</b></p>
-                <p style="font-size: 12px; color: #888;">Seguridad activa en Río Grande, Zacatecas.</p>
+                <p style="font-size: 16px;">Hola <strong>${nombre}</strong>,</p>
+                <p>Tu cuenta está casi lista. Ingresa el siguiente código en la app para verificar tu identidad:</p>
+                <div style="background: #111; font-size: 35px; font-weight: bold; color: #0095f6; text-align: center; padding: 15px; border-radius: 10px; margin: 20px 0; border: 1px dashed #0095f6;">
+                    ${code}
+                </div>
+                <p style="font-size: 12px; color: #888; text-align: center;">Protección de datos activa en Río Grande, Zacatecas.</p>
             </div>
         `
     };
 
     transporter.sendMail(mailOptions, (error) => {
-        if (error) return res.status(500).json({ message: 'Error de envío' });
+        if (error) {
+            console.log(`❌ Error al enviar correo a ${gmail}`);
+            return res.status(500).json({ message: 'Error de envío' });
+        }
         res.status(200).json({ message: 'Código enviado' });
     });
 });
 
-// --- 2. VERIFICACIÓN (VALIDAR CÓDIGO) ---
+// --- 2. FUNCIÓN DE VERIFICACIÓN (VALIDAR CÓDIGO) ---
 app.post('/verify', (req, res) => {
     const { gmail, code } = req.body;
+
     if (pendingVerifications[gmail] && pendingVerifications[gmail].code === code) {
+        // Mover de pendientes a usuarios oficiales
         registeredUsers[gmail] = pendingVerifications[gmail].userData;
         registeredUsers[gmail].status = 'active';
+        // --- GUARDADO EN USB ---
+const usbPath = 'D:/SnapSphere_Backup/usuarios.json'; // Asegúrate de que D: sea tu USB
+try {
+    const fs = require('fs');
+    let data = [];
+    if (fs.existsSync(usbPath)) {
+        data = JSON.parse(fs.readFileSync(usbPath, 'utf8'));
+    }
+    data.push({ gmail, status: 'active', date: new Date().toISOString() });
+    fs.writeFileSync(usbPath, JSON.stringify(data, null, 2));
+    console.log("✅ Respaldo en USB completado.");
+} catch (err) {
+    console.error("❌ Error al guardar en USB:", err.message);
+}
+// ------------------------
         delete pendingVerifications[gmail]; 
-        console.log(`✅ [CUENTA ACTIVADA] ${gmail} ha verificado su identidad.`);
+        
+        console.log(`✅ [CUENTA ACTIVADA] El usuario ${gmail} ha pasado la Verificación 3.0.`);
         res.status(200).json({ 
             message: 'Éxito', 
             nombre: registeredUsers[gmail].nombre,
-            fechaNac: registeredUsers[gmail].fechaNac 
+            apellidos: registeredUsers[gmail].apellidos 
         });
     } else {
-        res.status(401).json({ message: 'Código incorrecto' });
+        console.log(`⚠️ [ALERTA] Intento de código incorrecto detectado para: ${gmail}`);
+        res.status(401).json({ message: 'Código de seguridad incorrecto' });
     }
 });
 
-// --- 3. LOGIN CON CONEXIÓN AL SERVIDOR PANDA (4000) ---
+// --- 3. LOGIN CON CONEXIÓN SILENCIOSA AL SERVIDOR 4000 ---
 app.post('/login', async (req, res) => {
     const { gmail, password } = req.body;
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
     if (registeredUsers[gmail] && registeredUsers[gmail].password === password) {
-        console.log(`🔓 [LOGIN EXITOSO] ${gmail} desde IP: ${clientIp}`);
+        console.log(`🔓 [LOGIN EXITOSO] ${gmail} ha entrado al sistema.`);
+
+        // Validar que el usuario tenga los contadores inicializados
+if (user.followers === undefined) user.followers = 0;
+if (user.following === undefined) user.following = 0;
+if (user.posts === undefined) user.posts = 0;
+
+// Enviar la respuesta al frontend con los datos reales
+res.status(200).json({
+    message: "Login exitoso",
+    user: {
+        gmail: user.gmail,
+        username: user.username,
+        followers: user.followers,
+        following: user.following,
+        posts: user.posts
+    }
+});
         
+        // Conexión con el servidor Panda (otra terminal)
         axios.post('http://localhost:4000/conectar', { 
-            user: gmail, status: 'online', ip: clientIp, lastLogin: new Date().toLocaleString()
-        }).catch(() => { console.log("☁️  [INFO] Servidor Panda (4000) durmiendo."); });
+            user: gmail,
+            status: 'online',
+            lastLogin: new Date().toLocaleString()
+        }).catch(() => {
+            console.log("☁️  [INFO] Servidor secundario Panda (4000) no detectado, operando en modo local.");
+        });
 
         res.status(200).json({ 
             message: 'Bienvenido', 
-            nombre: registeredUsers[gmail].nombre,
-            fechaNac: registeredUsers[gmail].fechaNac 
+            nombre: registeredUsers[gmail].nombre 
         });
     } else {
+        console.log(`❌ [ACCESO DENEGADO] Intento de login fallido en la cuenta: ${gmail}`);
         res.status(401).json({ message: 'Credenciales inválidas' });
     }
 });
 
-// --- 4. ALERTA SÍSMICA Y NOTIFICACIONES ---
+// --- 4. RUTA DE NOTIFICACIONES Y ALERTA SÍSMICA ---
 app.post('/notify', (req, res) => {
     const { user, type, message } = req.body;
-    const notification = { id: Date.now(), user, type, message, timestamp: new Date().toLocaleTimeString() };
+    const notification = {
+        id: Date.now(),
+        user,
+        type, // sismo, follow, like, system
+        message,
+        timestamp: new Date().toLocaleTimeString()
+    };
     systemNotifications.push(notification);
-    console.log(`🔔 [NOTIFICACIÓN] ${type.toUpperCase()}: ${message}`);
+    console.log(`🔔 [NOTIFICACIÓN] Tipo: ${type} | Detalle: ${message}`);
     res.status(200).json(notification);
 });
 
-// --- 5. MENSAJES DIRECTOS (DMs) ---
+// --- 5. RUTA DE MENSAJES DIRECTOS (DMs) ---
 app.post('/send-dm', (req, res) => {
     const { emisor, receptor, mensaje } = req.body;
-    const msgData = { from: emisor, to: receptor, content: mensaje, time: new Date().toLocaleString() };
+    const msgData = {
+        from: emisor,
+        to: receptor,
+        content: mensaje,
+        time: new Date().toLocaleString()
+    };
     chatMessages.push(msgData);
-    console.log(`💬 [DM] ${emisor} -> ${receptor}: ${mensaje}`);
+    console.log(`💬 [MENSAJE DIRECTO] De: ${emisor} -> Para: ${receptor}`);
     res.status(200).json({ status: 'Mensaje entregado' });
 });
 
-// --- ARRANQUE SNAPSPHERE UNIVERSAL ---
+// --- ARRANQUE PROFESIONAL SNAPSPHERE ---
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.clear();
@@ -170,29 +223,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`📍 DIRECCIÓN LOCAL: http://localhost:${PORT}`);
     console.log(`🚀 ESTADO: OPERATIVO Y ESPERANDO CONEXIONES`);
     console.log(`🔐 PROTECCIÓN: NIVEL 3.0 ACTIVA`);
-    console.log(`🎂 VALIDACIÓN: EDAD MÍNIMA 10 AÑOS`);
     console.log(`💻 DESARROLLO: Visual Studio Code`);
     console.log("==================================================\n");
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`Snapsphere encendido en el puerto ${PORT}`);
-});
-
-// --- CONFIGURACIÓN PARA RENDER ---
-
-// 1. Sirve los archivos de la carpeta 'public' (CSS, imágenes, etc.)
-app.use(express.static('public'));
-
-// 2. Ruta principal: Carga tu página Snapsphere
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
-});
-
-// 3. El puerto dinámico (lo que vimos en azul)
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Snapsphere encendido en el puerto ${PORT}`);
 });
